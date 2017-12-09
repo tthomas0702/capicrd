@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ver 0.0.4
+# ver 0.0.5
 # Script for getting tcpudmp of icrdcap.sh  traffic on ephemeral ports
 
 shopt -s -o nounset
@@ -55,7 +55,7 @@ echo -e "port_list \n$port_list"
 echo -e "port_check \n$port_check"
     
 echo -e "checking ports..."
-# need to test if this really adds all the ports that show up
+# This works
     for n in $port_check; do
         if [[ $port_list == *"$n"* ]]
         then
@@ -66,7 +66,8 @@ echo -e "checking ports..."
         fi    
     done
 done
-
+# at this point I need to create a filter based on the port_list and then filter the orgiginal tcpdump down to 
+# just the TCP icrd_child ports
 echo $port_list
 
 
