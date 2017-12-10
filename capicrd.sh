@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ver 0.0.5
+# ver 0.0.6
 # Script for getting tcpudmp of icrdcap.sh  traffic on ephemeral ports
 
 shopt -s -o nounset
@@ -9,7 +9,8 @@ declare -rx SCRIPT=${0##*/}
 showUsage() {
     echo "$SCRIPT "
     echo ""
-    echo "Will capture all traffic on lo interface ans then fitler down a pcap file on the icrd_child ports"
+    echo "Capture all traffic on lo interface and then fitler down a pcap file on the icrd_child ports"
+    echo "    -r|--remove - removes the wide open capture file of all lo traffic, default is to leave it"
     exit 1
 }
 
@@ -18,6 +19,10 @@ while [ $# -gt 0 ]; do
         -h|--help)
             showUsage
             ;;
+        -r|--remove)
+            remove_open_cap=1
+            ;;
+            
         *)
             echo "Unknown option: $1"
             showUsage
@@ -33,8 +38,7 @@ echo -e "starting port_list\n$port_list"
 # start capure on loopback
 echo "starting capture..."
 tcpdump -s0 -ni lo -w /var/tmp/icrdcap.tmp.pcap &>err.log &
-
-capture_pid=`ps aux | grep icrdcap.tmp.pcap | grep -v grep | awk '{print $2}'`
+capture_pid=$!
 echo "tcpdump pid is $capture_pid"
 
 # check for new ports
@@ -44,6 +48,7 @@ while true ; do
      if [[ $x == "x" ]];
         then
             # kill tcpdump
+            echo -e "killing tcpdump $capture_pid"
             kill $capture_pid 
             # break out of loop
             break ; 
@@ -70,6 +75,32 @@ done
 # just the TCP icrd_child ports
 echo $port_list
 
+# make filter for ports
+# create array of ports so I can tell when on the last
+declare -a port_array
+filter_ports=""
+port_array=( $port_list )
+pos=$(( ${#port_array[*]} - 1 ))
+last=${port_array[$pos]}
 
+for PORT in "${port_array[@]}"
+do 
+    if [[ $PORT == $last ]]
+    then
+        #echo "$PORT is the last" 
+        filter_ports="$filter_ports$PORT "
+        break
+    else 
+        #echo "$PORT"
+        filter_ports="$filter_ports$PORT or "
+         
+  fi 
+done 
+
+#echo "filter_ports is $filter_ports"
+display_filter="port ( $filter_ports )"
+echo -e "tcpdump diplay filter: $display_filter"
+
+tcpdump -r /var/tmp/icrdcap.tmp.pcap $display_filter -w /var/tmp/final.pcap 
 
 
