@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ver 0.0.6
+# ver 0.0.7
 # Script for getting tcpudmp of icrdcap.sh  traffic on ephemeral ports
 
 shopt -s -o nounset
@@ -41,7 +41,7 @@ tcpdump -s0 -ni lo -w /var/tmp/icrdcap.tmp.pcap &>err.log &
 capture_pid=$!
 echo "tcpdump pid is $capture_pid"
 
-# check for new ports
+# Start a loop waitign for user to end. Check for new port in loop
 while true ; do
     read -t 10 -p  "please enter "x" <ENTER> to quite " x ;
     echo ""
@@ -54,13 +54,13 @@ while true ; do
             break ; 
                 
      fi  ;
-# do stuff here while waiting for user to end
-port_check=`netstat -lnp | grep icrd_child | cut -d ':' -f2 | cut -d " " -f1`
-echo -e "port_list \n$port_list"
-echo -e "port_check \n$port_check"
+    # do stuff here while waiting for user to end
+    port_check=`netstat -lnp | grep icrd_child | cut -d ':' -f2 | cut -d " " -f1`
+    echo -e "port_list \n$port_list"
+    echo -e "port_check \n$port_check"
     
-echo -e "checking ports..."
-# This works
+    echo -e "checking ports..."
+    # Check if port in port_check are in port_list, if not add to port_list
     for n in $port_check; do
         if [[ $port_list == *"$n"* ]]
         then
@@ -71,20 +71,19 @@ echo -e "checking ports..."
         fi    
     done
 done
-# at this point I need to create a filter based on the port_list and then filter the orgiginal tcpdump down to 
-# just the TCP icrd_child ports
-echo $port_list
+# Create a filter based on the port_list ports
 
-# make filter for ports
-# create array of ports so I can tell when on the last
+#echo $port_list
+
+# create array of ports so I can tell when on the last port in array
 declare -a port_array
 filter_ports=""
 port_array=( $port_list )
 pos=$(( ${#port_array[*]} - 1 ))
 last=${port_array[$pos]}
 
-for PORT in "${port_array[@]}"
-do 
+# format list with "or" in between ports
+for PORT in "${port_array[@]}"; do 
     if [[ $PORT == $last ]]
     then
         #echo "$PORT is the last" 
@@ -93,14 +92,16 @@ do
     else 
         #echo "$PORT"
         filter_ports="$filter_ports$PORT or "
-         
-  fi 
+    fi 
 done 
 
 #echo "filter_ports is $filter_ports"
 display_filter="port ( $filter_ports )"
 echo -e "tcpdump diplay filter: $display_filter"
 
+# Filter orignal wide open loopback capture to just icrd_child ports
 tcpdump -r /var/tmp/icrdcap.tmp.pcap $display_filter -w /var/tmp/final.pcap 
 
-
+######## 
+# to do ... create better file name above and delete loopback file, give ending message showing file created
+#######
