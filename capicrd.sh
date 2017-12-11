@@ -1,10 +1,11 @@
 #!/bin/bash
 
-# ver 0.0.7
+# ver 0.0.8
 # Script for getting tcpudmp of icrdcap.sh  traffic on ephemeral ports
 
 shopt -s -o nounset
 declare -rx SCRIPT=${0##*/}
+remove_open_cap=0
 
 showUsage() {
     echo "$SCRIPT "
@@ -56,8 +57,8 @@ while true ; do
      fi  ;
     # do stuff here while waiting for user to end
     port_check=`netstat -lnp | grep icrd_child | cut -d ':' -f2 | cut -d " " -f1`
-    echo -e "port_list \n$port_list"
-    echo -e "port_check \n$port_check"
+    echo -e "\nAll ports used: \n$port_list"
+    echo -e "Current ports in use: \n$port_check"
     
     echo -e "checking ports..."
     # Check if port in port_check are in port_list, if not add to port_list
@@ -100,8 +101,16 @@ display_filter="port ( $filter_ports )"
 echo -e "tcpdump diplay filter: $display_filter"
 
 # Filter orignal wide open loopback capture to just icrd_child ports
-tcpdump -r /var/tmp/icrdcap.tmp.pcap $display_filter -w /var/tmp/final.pcap 
+capture_name="/var/tmp/icrd_`date +"%F-%H_%M_%S"`.pcap"
+tcpdump -r /var/tmp/icrdcap.tmp.pcap $display_filter -w $capture_name 
 
-######## 
-# to do ... create better file name above and delete loopback file, give ending message showing file created
-#######
+
+if (( $remove_open_cap == 1 )); then
+    echo -e "removing wide open loopback cpap file /var/tmp/icrdcap.tmp.pcap"
+    rm -i /var/tmp/icrdcap.tmp.pcap
+    echo -e "Final file created:\n $capture_name\n"
+else
+    echo -e "Files created:\n/var/tmp/icrdcap.tmp.pcap\n$capture_name\n"
+fi
+
+
