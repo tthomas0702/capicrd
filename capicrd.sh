@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ver 0.0.8
+# ver 0.1.0
 # Script for getting tcpudmp of icrdcap.sh  traffic on ephemeral ports
 
 shopt -s -o nounset
@@ -40,22 +40,19 @@ echo -e "starting port_list\n$port_list"
 echo "starting capture..."
 tcpdump -s0 -ni lo -w /var/tmp/icrdcap.tmp.pcap &>err.log &
 capture_pid=$!
-echo "tcpdump pid is $capture_pid"
 
-# Start a loop waitign for user to end. Check for new port in loop
+# Start a loop waiting for user to end. Check for new port in loop
+# if user enters "x" break out of loop and stop tcpdump
 while true ; do
-    read -t 10 -p  "please enter "x" <ENTER> to quite " x ;
+    read -t 10 -p  "Enter "x" <ENTER> to quite " x ;
     echo ""
      if [[ $x == "x" ]];
         then
-            # kill tcpdump
-            echo -e "killing tcpdump $capture_pid"
+            echo -e "killing tcpdump pid $capture_pid"
             kill $capture_pid 
-            # break out of loop
             break ; 
-                
      fi  ;
-    # do stuff here while waiting for user to end
+    # check for new ports while in loop
     port_check=`netstat -lnp | grep icrd_child | cut -d ':' -f2 | cut -d " " -f1`
     echo -e "\nAll ports used: \n$port_list"
     echo -e "Current ports in use: \n$port_check"
@@ -72,10 +69,8 @@ while true ; do
         fi    
     done
 done
-# Create a filter based on the port_list ports
 
-#echo $port_list
-
+# now that out of loop filter wide open capture based on ports used
 # create array of ports so I can tell when on the last port in array
 declare -a port_array
 filter_ports=""
@@ -96,14 +91,10 @@ for PORT in "${port_array[@]}"; do
     fi 
 done 
 
-#echo "filter_ports is $filter_ports"
 display_filter="port ( $filter_ports )"
 echo -e "tcpdump diplay filter: $display_filter"
-
-# Filter orignal wide open loopback capture to just icrd_child ports
 capture_name="/var/tmp/icrd_`date +"%F-%H_%M_%S"`.pcap"
-tcpdump -r /var/tmp/icrdcap.tmp.pcap $display_filter -w $capture_name 
-
+tcpdump -r /var/tmp/icrdcap.tmp.pcap $display_filter -w $capture_name &>>err.log & 
 
 if (( $remove_open_cap == 1 )); then
     echo -e "removing wide open loopback cpap file /var/tmp/icrdcap.tmp.pcap"
